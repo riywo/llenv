@@ -1,0 +1,10 @@
+.perlbrew
+perl5
+.rbenv
+ruby-build
+.pythonbrew
+local
+apps
+bin
+!bin/llenv
+.nvm

@@ -1,0 +1,39 @@
+#!/bin/sh
+[[ -z "$LLENV_ROOT" ]] && export LLENV_ROOT="$HOME/.llenv"
+source $LLENV_ROOT/etc/bashrc
+
+## perlbrew + carton
+curl -kL http://install.perlbrew.pl | bash
+source $LLENV_ROOT/etc/bashrc
+perlbrew install --notest  perl-5.14.2
+perlbrew switch perl-5.14.2
+perlbrew install-cpanm
+echo y | cpanm -v Carton ## y for JSON...
+perlbrew switch-off
+
+## rbenv(+ruby-build) + bundler
+GIT_SSL_NO_VERIFY=true git clone https://github.com/sstephenson/ruby-build.git $LLENV_ROOT/ruby-build
+GIT_SSL_NO_VERIFY=true git clone https://github.com/sstephenson/rbenv.git $LLENV_ROOT/.rbenv
+source $LLENV_ROOT/etc/bashrc
+cd $LLENV_ROOT/ruby-build && PREFIX=$LLENV_ROOT/local ./install.sh
+rbenv install 1.9.2-p290
+rbenv rehash
+rbenv global 1.9.2-p290
+gem install bundler
+rbenv rehash
+rm -f $LLENV_ROOT/.rbenv/version
+
+## pythonbrew + virtualenv
+curl -kL http://xrl.us/pythonbrewinstall | bash
+source $LLENV_ROOT/etc/bashrc
+pythonbrew install --verbose --no-test 2.7.2
+pythonbrew switch 2.7.2
+pip install virtualenv
+pythonbrew off
+
+## nvm
+GIT_SSL_NO_VERIFY=true git clone git://github.com/creationix/nvm.git $LLENV_ROOT/.nvm
+source $LLENV_ROOT/.nvm/nvm.sh
+nvm install v0.6.5
+
+source $LLENV_ROOT/etc/bashrc

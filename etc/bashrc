@@ -1,0 +1,22 @@
+[[ -z "$LLENV_ROOT" ]] && export LLENV_ROOT="$HOME/.llenv"
+export PATH=$LLENV_ROOT/bin:$LLENV_ROOT/local/bin:$PATH
+export LLENV_APPDIR=$LLENV_ROOT/apps
+
+# perlbrew
+export PERLBREW_HOME=$LLENV_ROOT/.perlbrew
+export PERLBREW_ROOT=$LLENV_ROOT/perl5/perlbrew
+[[ -f "$PERLBREW_ROOT/etc/bashrc" ]] && source $PERLBREW_ROOT/etc/bashrc
+
+# rbenv
+export RBENV_ROOT=$LLENV_ROOT/.rbenv
+export PATH=$RBENV_ROOT/bin:$PATH
+[[ -n "$(which rbenv 2>/dev/null)" ]] && eval "$(rbenv init -)"
+
+# pythonbrew
+export PYTHONBREW_ROOT=$LLENV_ROOT/.pythonbrew
+export PYTHONBREW_HOME=$LLENV_ROOT/.pythonbrew
+[[ -f "$PYTHONBREW_ROOT/etc/bashrc" ]] && source $PYTHONBREW_ROOT/etc/bashrc
+
+# nvm
+export NVM_DIR=$LLENV_ROOT/.nvm
+[[ -f "$NVM_DIR/nvm.sh" ]] && source $NVM_DIR/nvm.sh
