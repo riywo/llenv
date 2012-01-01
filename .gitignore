@@ -5,6 +5,4 @@ ruby-build
 .pythonbrew
 local
 apps
-bin
-!bin/llenv
 .nvm

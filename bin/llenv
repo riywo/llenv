@@ -1,0 +1,172 @@
+#!/bin/sh
+set -e
+[ -n "$LLENV_DEBUG" ] && set -x
+
+load_llenv_file() {
+  llenv_file_path="$LLENV_APPDIR/$1/.llenv"
+  if ! [[ -f "$llenv_file_path" ]]; then echo "not found .llenv file($llenv_file_path)"; exit 1; fi
+  source $llenv_file_path
+  export LLENV_INCLUDE_FIND_$1=1
+  export _PATH=$LLENV_BUNDLEPATH:$_PATH
+  export _BUNDLELIBPATH=$LLENV_BUNDLELIBPATH:$_BUNDLELIBPATH
+  if [[ -n "$LLENV_PATH" ]]; then export _PATH=$LLENV_PATH:$_PATH; fi
+  if [[ -n "$LLENV_LIBPATH" ]]; then export _LIBPATH=$LLENV_LIBPATH:$_LIBPATH; fi
+}
+
+include_apps() {
+  ORG_LLENV_LLPATH=$LLENV_LLPATH
+  IFS=","
+  llapps=($LLENV_INCLUDE_APPS)
+  LLENV_INCLUDE_APPS=''
+  for app in ${llapps[@]}; do
+    if [[ -z $(eval 'echo $LLENV_INCLUDE_FIND_'$app) ]]; then
+      load_llenv_file $app
+      if [[ "$ORG_LLENV_LLPATH" != "$LLENV_LLPATH" ]]; then echo "different LLENV_LLPATH($LLENV_LLPATH)" >&2; exit 1; fi
+      if [[ -n $LLENV_INCLUDE_APPS ]]; then include_apps; fi
+    fi
+  done
+  IFS=" "
+}
+
+get_script_path() {
+  IFS=":"
+  llpath=("$_PATH")
+  for path in ${llpath[@]}; do
+    abspath=$(eval echo -n "$path/$1")
+    if [[ -f "$abspath" ]] ; then
+      echo -n "$path/$1"
+      break
+    fi
+  done
+  IFS=" "
+}
+
+set_llenv_libpath() {
+  case "$LLENV_LL" in
+  "perl" )
+    IFS=":"
+    llpath=("$_BUNDLELIBPATH:$_LIBPATH")
+    for path in ${llpath[@]}; do
+      export PERL5OPT="-Mlib=$path $PERL5OPT"
+    done
+    IFS=" "
+  ;;
+  "ruby" )
+    export GEM_PATH="$_BUNDLELIBPATH:$GEM_PATH"
+    export RUBYLIB="$_LIBPATH:$RUBYLIB"
+  ;;
+  "python" )
+    export PYTHONPATH="$_LIBPATH:$_BUNDLELIBPATH:$PYTHONPATH"
+  ;;
+  "node" )
+    export NODE_PATH="$_LIBPATH:$_BUNDLELIBPATH:$NODE_PATH"
+  ;;
+  esac
+}
+
+eval_llenv_val(){
+  export LLENV_LLPATH=$(eval echo -n "$LLENV_LLPATH")
+  export LLENV_SCRIPT_PATH=$(eval echo -n "$LLENV_SCRIPT_PATH")
+
+  export PATH=$(eval echo -n "$_PATH"):$PATH
+  export PERL5OPT=$(eval echo -n "$PERL5OPT")
+  export GEM_PATH=$(eval echo -n "$GEM_PATH")
+  export RUBYLIB=$(eval echo -n "$RUBYLIB")
+  export PYTHONPATH=$(eval echo -n "$PYTHONPATH")
+}
+
+get_export_env() {
+  case "$LLENV_LL" in
+  "perl" )
+    echo "export PERL5OPT=\"$PERL5OPT\""
+  ;;
+  "ruby" )
+    echo "export GEM_PATH=$GEM_PATH"
+    echo "export RUBYLIB=$RUBYLIB"
+  ;;
+  "python" )
+    echo "export PYTHONPATH=$PYTHONPATH"
+  ;;
+  "node" )
+    echo "export NODE_PATH=$NODE_PATH"
+  ;;
+  esac
+}
+
+get_llenv_exports() {
+  case "$LLENV_LL" in
+  "perl" )
+    echo "export LLENV_LLPATH='\$PERLBREW_ROOT/perls/$LLENV_LLVERSION/bin/perl'"
+    echo "export LLENV_BUNDLELIBPATH='\$LLENV_APPDIR/$LLENV_APP/local/lib/perl5'"
+    echo "export LLENV_BUNDLEPATH='\$LLENV_APPDIR/$LLENV_APP/local/bin'"
+  ;;
+  "ruby" )
+    echo "export LLENV_LLPATH='\$RBENV_ROOT/versions/$LLENV_LLVERSION/bin/ruby'"
+    echo "export LLENV_BUNDLELIBPATH='\$LLENV_APPDIR/$LLENV_APP/vendor/bundle/ruby/1.9.1'"
+    echo "export LLENV_BUNDLEPATH='\$LLENV_APPDIR/$LLENV_APP/vendor/bundle/ruby/1.9.1/bin'"
+  ;;
+  "python" )
+    python_lib_version=$(echo -n $LLENV_LLVERSION | sed -e 's/Python-\([0-9]*\.[0-9]*\)\..*/python\1/')
+    echo "export LLENV_LLPATH='\$PYTHONBREW_ROOT/pythons/$LLENV_LLVERSION/bin/python'"
+    echo "export LLENV_BUNDLELIBPATH='\$LLENV_APPDIR/$LLENV_APP/lib/$python_lib_version/site-packages'"
+    echo "export LLENV_BUNDLEPATH='\$LLENV_APPDIR/$LLENV_APP/bin'"
+  ;;
+  "node" )
+    echo "export LLENV_LLPATH='\$NVM_DIR/$LLENV_LLVERSION/bin/node'"
+    echo "export LLENV_BUNDLELIBPATH='\$LLENV_APPDIR/$LLENV_APP/node_modules'"
+    echo "export LLENV_BUNDLEPATH='\$LLENV_APPDIR/$LLENV_APP/node_modules/.bin'"
+  ;;
+  esac
+}
+
+command="$1"
+appname=${PWD##*/}
+case "$command" in
+"" | "-h" | "--help" )
+  echo -e "llenv help" >&2
+  ;;
+"exec" )
+  load_llenv_file $appname
+  export LLENV_SCRIPT_PATH="$(get_script_path $2)"
+  if [[ -z "$LLENV_SCRIPT_PATH" ]]; then echo "not found $2 in $LLENV_PATH:$LLENV_BUNDLEPATH" >&2; exit 1; fi
+  include_apps
+  set_llenv_libpath
+
+  shift 2
+  eval_llenv_val
+  exec $LLENV_LLPATH $LLENV_SCRIPT_PATH "$@"
+  ;;
+"install" )
+  load_llenv_file $appname
+  export LLENV_SCRIPT_PATH="$(get_script_path $2)"
+  if [[ -z "$LLENV_SCRIPT_PATH" ]]; then echo "not found $2 in $LLENV_PATH:$LLENV_BUNDLEPATH" >&2; exit 1; fi
+  include_apps
+  set_llenv_libpath
+
+  export_env="$(get_export_env)"
+
+  cat <<EOF > $LLENV_ROOT/bin/$2
+#!/bin/sh
+$export_env
+export LLENV_LLPATH="$LLENV_LLPATH"
+export LLENV_SCRIPT_PATH="$LLENV_SCRIPT_PATH"
+exec \$LLENV_LLPATH \$LLENV_SCRIPT_PATH "\$@"
+EOF
+  chmod +x $LLENV_ROOT/bin/$2
+  ;;
+"setup" )
+  export LLENV_LL="$2"
+  export LLENV_LLVERSION="$3"
+  export LLENV_APP="$4"
+
+  llenv_exports="$(get_llenv_exports)"
+
+  if ! [[ -d $LLENV_APPDIR/$LLENV_APP ]]; then mkdir -p $LLENV_APPDIR/$LLENV_APP; fi
+  cat <<EOF > $LLENV_APPDIR/$LLENV_APP/.llenv
+export LLENV_LL=$LLENV_LL
+$llenv_exports
+EOF
+  ;;
+* )
+  ;;
+esac
