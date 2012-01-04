@@ -6,3 +6,5 @@ ruby-build
 local
 apps
 .nvm
+bin/
+!bin/llenv
