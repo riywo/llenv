@@ -1,23 +1,4 @@
-## INSTALL
-$ git clone *** ~/.llenv
-$ vim ~/.bashrc
-export LLENV_ROOT=$HOME/.llenv
-[[ -f "$LLENV_ROOT/etc/bashrc" ]] && source $LLENV_ROOT/etc/bashrc
-$ source ~/.bashrc
-$ cd ~/.llenv
-$ ./llenv-install
-(needed re-login?)
+This is old program.
+The new one is App::llenv.
 
-## USAGE
-$ cd ~/.llenv
-$ mkdir apps
-$ cd apps
-$ llenv setup perl perl-5.14.2 ikachan
-$ cd ikachan
-$ carton install App::Ikachan
-$ llenv exec ikachan
-
-$ llenv install ikachan
-$ which ikachan
-$ ikachan
-
+https://github.com/riywo/App-llenv
